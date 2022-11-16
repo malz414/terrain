@@ -1,0 +1,164 @@
+#version 450 core
+
+// reading in a triangle, split tesselated triangels evenly in a counter-clockwise direction (ccw)
+layout(triangles, equal_spacing, ccw) in;
+
+
+// forward declare functions to perfrom interpolation with the barycentric coordinates from the Primitive Generator
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2) ;
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2) ;
+float snoise(vec3 x);
+float noise(vec3 pos, int octaves);
+// unifrom matrices to perform transformations
+// previously this would have been done in vertex shader
+
+uniform mat4 view;
+uniform mat4 model;
+uniform mat4 projection;
+uniform sampler2D heightMap;
+uniform int scale;
+uniform int time;
+uniform vec3 viewPos;
+uniform vec4 plane;
+
+
+in vec2 tessTC[];
+in vec3 posTC[] ;
+//in vec3 normTC[] ;
+//in vec3 fragPosTE[]; 
+in vec3 eyeTC[];
+
+
+
+
+// pass along the interpolated values
+//out vec3 normES ;
+out vec2 texES;
+out vec3 fragPosFS ;
+out vec3 tessNormals;
+out vec3 eyePos;
+out float visibility;
+
+
+out vec3 right	 ;
+out vec3 left 	 ;
+out vec3 up 	 ;
+out vec3 down 	 ;
+
+out float r ;
+out float l ;
+out float u;
+out float d ;
+
+
+
+
+//out vec3 fragPosES; 
+
+
+void main()
+{
+//SILENT HILL FOG
+//float G = 2.035;
+//float D = 0.035;
+
+//LIGHT FOG 
+float G = .35;
+float D = .035;
+
+int octaves = 10;
+ //  normES = interpolate3D(normTC[0], normTC[1], normTC[2]) ;
+
+   fragPosFS = interpolate3D(posTC[0], posTC[1], posTC[2]) ;
+
+   eyePos = interpolate3D(eyeTC[0], eyeTC[1], eyeTC[2]) ;
+
+
+   texES = interpolate2D(tessTC[0], tessTC[1], tessTC[2]);
+   float height = texture(heightMap, texES).r;
+ 
+  float r = noise(right, octaves);
+  float l = noise(left, octaves);
+  float u = noise(up, octaves);
+  float d = noise(down, octaves);
+	
+
+ vec3 right = vec3 (fragPosFS.x+r, fragPosFS.y, fragPosFS.z);
+ vec3 left = vec3 (fragPosFS.x-l, fragPosFS.y, fragPosFS.z);
+ vec3 up = vec3 (fragPosFS.x, fragPosFS.y, fragPosFS.z+u);
+ vec3 down = vec3 (fragPosFS.x, fragPosFS.y, fragPosFS.z-d);
+
+ 
+tessNormals = normalize(vec3(-(l-r), 2, -(d-u)));
+
+
+  fragPosFS.y = noise(fragPosFS, octaves);
+   gl_Position = projection * view * vec4(fragPosFS, 1.0);
+  //gl_ClipDistance[0] = dot(vec4(vertexPositions), plane);
+     
+//	 fragPosFS.y = height*scale;
+  // float right = (textureOffset(heightMap, texES, ivec2(1, 0)).r)*scale;
+  // float left = (textureOffset(heightMap, texES, ivec2(-1, 0)).r)*scale;
+  // float up = (textureOffset(heightMap, texES, ivec2(0, 1)).r)*scale;
+   //float down = (textureOffset(heightMap, texES, ivec2(0, 0)).r)*scale;
+
+  //float lr = left - right;
+  //float du = up - down;
+  //tessNormals = normalize(vec3(lr,2.0,du));
+
+
+  float distanceCam = distance(viewPos, fragPosFS);
+  visibility = exp(-pow((distanceCam*D),G));
+  visibility = clamp(visibility,0.0,1.0);
+  
+} 
+
+
+//basic linear interpolation
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2)
+{
+   	return vec2(gl_TessCoord.x) * v0 + vec2(gl_TessCoord.y) * v1 + vec2(gl_TessCoord.z) * v2;
+}
+
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
+{
+   	return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
+}
+
+ 
+  
+float hash(float n) {
+
+    return fract(sin(n) * 753.5453123 * time );
+}
+
+
+float snoise(vec3 x)
+{
+	vec3 p = floor(x);
+	vec3 f = fract(x);
+	f = f * f * (3.0f - (2.0f * f));
+
+	float n = p.x + p.y * 157.0f + 113.0f * p.z;
+	return mix(mix(mix(hash(n + 0.0f), hash(n + 1.0f), f.x),
+		mix(hash(n + 157.0f), hash(n + 158.0f), f.x), f.y),
+		mix(mix(hash(n + 113.0f), hash(n + 114.0f), f.x),
+			mix(hash(n + 270.0f), hash(n + 271.0f), f.x), f.y), f.z);
+}
+
+
+float noise(vec3 pos, int octaves) {
+	float total = 0.0f;
+	float maxAmplitude = 0.0f;
+
+	float amplitude = 100.0f;
+	float frequency = .005;
+
+	for (int i = 0; i < octaves; i++) {
+		total += snoise(pos * frequency)* amplitude;
+		maxAmplitude += amplitude;
+		frequency *= 2;
+		amplitude /= 2;
+	}
+	return (total / maxAmplitude)*scale;
+}

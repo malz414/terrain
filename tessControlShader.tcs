@@ -1,0 +1,74 @@
+// first step of tesselation shader
+// tesselation control shader add/deletes control points and determines the tesselatation level
+// patch has three control points here (three vertices for each triangle)
+
+
+#version 450 core
+layout (vertices =3) out;
+
+float GetTessLevel(float Distance0, float Distance1) ;
+void CalcPositions();
+
+
+// vectors stored as arrays - each patch has three vertices, each with an xyz pos and xyz norm value 
+//posVS = position from Vertex Shader, posTC = position from this Tesselation Control shader
+
+in vec3 FragPos[] ;
+in vec3 eye[] ;
+in vec2 TexCoords[];
+//in vec3 fragPos[]; 
+
+out vec3 posTC[] ;
+out vec2 tessTC[];
+//out vec3 fragPosTE[]; 
+out vec3 eyeTC[];
+
+
+
+
+
+
+void main()
+{
+  // tesselation level; we will find this automatically later but for now hardcoded value
+
+
+   // gpu can calculate each control point in parallel
+   // tesselation level same for entire patch so only need to set it once (for the first control point)
+   // gl_invocation called for each control point
+ 
+		
+
+   float eyeToVertexDist0 = distance(eye[0], FragPos[0]);
+   float eyeToVertexDist1 = distance(eye[1], FragPos[1]);
+   float eyeToVertexDist2 = distance(eye[2], FragPos[2]);
+   gl_TessLevelOuter[0] = GetTessLevel(eyeToVertexDist1, eyeToVertexDist2);
+   gl_TessLevelOuter[1] = GetTessLevel(eyeToVertexDist2, eyeToVertexDist0);
+   gl_TessLevelOuter[2] = GetTessLevel(eyeToVertexDist0, eyeToVertexDist1);
+   gl_TessLevelInner[0] = GetTessLevel(eyeToVertexDist0, eyeToVertexDist1);
+
+   // pass through position and normal information
+   posTC[gl_InvocationID]  = FragPos[gl_InvocationID] ;
+   tessTC[gl_InvocationID] = TexCoords[gl_InvocationID] ;
+   eyeTC[gl_InvocationID] = eye[gl_InvocationID] ;
+
+}
+
+ float GetTessLevel(float Distance0, float Distance1)
+ {
+    float AvgDistance = (Distance0 + Distance1) / 3.0;
+	 if (AvgDistance <= 30.0) {
+        return 20.0;
+    }else if (AvgDistance <= 50.0) {
+        return 8.0;
+    }
+	else if (AvgDistance <= 76.0) {
+        return 4.0;
+    }
+	else if (AvgDistance <= 1500.0) {
+        return 2.0;
+    }
+    else{
+        return 1.0;
+    }
+}
