@@ -22,7 +22,7 @@ Installation
 
     bash
 
-    git clone https://github.com/yourusername/opengl-terrain-generation.git
+    git clone https://github.com/malz414/terrain.git
 
     Compile the program using your preferred C++ compiler.
 
