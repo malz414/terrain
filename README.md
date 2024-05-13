@@ -1,7 +1,7 @@
 _Link to Cube Texturing: https://github.com/malz414/OpenGL-Cube-Texture_
 
-**OpenGL Terrain Generation Program
-**
+**OpenGL Terrain Generation Program**
+
 This OpenGL terrain generation program creates dynamic landscapes using tessellation and fog effects to optimize rendering and enhance realism. Each time the program is launched, a new map is algorithmically generated, providing users with unique environments to explore.
 Features
 
